@@ -107,9 +107,16 @@ tsl_create_upper_paths_hook(PlannerInfo *root, UpperRelationKind stage, RelOptIn
  * break postgres tools like pg_dump.
  */
 static inline bool
-use_decompress_chunk_node(const RelOptInfo *rel, const RangeTblEntry *rte, const Chunk *chunk)
+use_decompress_chunk_node(const RelOptInfo *rel, const RangeTblEntry *rte, const Hypertable *ht,
+						  const Chunk *chunk)
 {
-	return ts_guc_enable_transparent_decompression &&
+	/*
+	 * The transparent_decompression GUC settings:
+	 *
+	 * 1. Use only with "regular" compressed chunks.
+	 * 2. Use with both "regular" compressed chunks and hypercore chunks.
+	 */
+	return ts_should_use_transparent_decompression(ht, chunk->amoid) &&
 		   /* Check that the chunk is actually compressed */
 		   chunk->fd.compressed_chunk_id != INVALID_CHUNK_ID &&
 		   /* Check that it is _not_ SELECT FROM ONLY <chunk> */
@@ -138,7 +145,7 @@ tsl_set_rel_pathlist_query(PlannerInfo *root, RelOptInfo *rel, Index rti, RangeT
 	if (chunk == NULL)
 		return;
 
-	if (use_decompress_chunk_node(rel, rte, chunk))
+	if (use_decompress_chunk_node(rel, rte, ht, chunk))
 	{
 		ts_decompress_chunk_generate_paths(root, rel, ht, chunk);
 	}
@@ -147,20 +154,10 @@ tsl_set_rel_pathlist_query(PlannerInfo *root, RelOptInfo *rel, Index rti, RangeT
 	 * alternative paths. This should not be compatible with transparent
 	 * decompression, so only add if we didn't add decompression paths above.
 	 */
-	else if (ts_is_hypercore_am(chunk->amoid))
+	else if (ts_is_hypercore_am(chunk->amoid) && ts_guc_enable_columnarscan)
 	{
-		/* To be implemented */
+		columnar_scan_set_rel_pathlist(root, rel, ht);
 	}
-
-	Relation relation = table_open(rte->relid, AccessShareLock);
-
-	if (relation->rd_tableam == compressionam_routine())
-	{
-		if (!ts_guc_enable_transparent_decompression && ts_guc_enable_columnarscan)
-			columnar_scan_set_rel_pathlist(root, rel, ht);
-	}
-
-	table_close(relation, AccessShareLock);
 }
 
 void

@@ -33,9 +33,9 @@
 
 #include <math.h>
 
-#include "compat/compat.h"
 #include "allpaths.h"
 #include "chunk.h"
+#include "cross_module_fn.h"
 #include "planner/planner.h"
 
 static void set_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, Index rti, RangeTblEntry *rte);
@@ -200,8 +200,7 @@ ts_set_append_rel_pathlist(PlannerInfo *root, RelOptInfo *parent_rel, Index pare
 			Assert(chunk != NULL);
 
 			const bool use_transparent_decompression =
-				TS_HYPERTABLE_HAS_COMPRESSION_TABLE(parent_ht) &&
-				ts_guc_enable_transparent_decompression;
+				ts_should_use_transparent_decompression(parent_ht, chunk->amoid);
 
 			/*
 			 * We only clear the index list if we have enabled transparent

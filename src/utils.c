@@ -12,6 +12,7 @@
 #include <access/xact.h>
 #include <catalog/indexing.h>
 #include <catalog/namespace.h>
+#include <catalog/pg_am.h>
 #include <catalog/pg_cast.h>
 #include <catalog/pg_inherits.h>
 #include <catalog/pg_operator.h>
@@ -37,6 +38,7 @@
 
 #include "compat/compat.h"
 #include "chunk.h"
+#include "cross_module_fn.h"
 #include "debug_point.h"
 #include "guc.h"
 #include "hypertable_cache.h"
@@ -1809,6 +1811,20 @@ ts_is_hypercore_am(Oid amoid)
 		return false;
 
 	return amoid == hypercore_amoid;
+}
+
+bool
+ts_should_use_transparent_decompression(const struct Hypertable *ht, Oid amoid)
+{
+	if (!ht)
+		return false;
+
+	if (!TS_HYPERTABLE_HAS_COMPRESSION_ENABLED(ht))
+		return false;
+	else if (ts_is_hypercore_am(amoid))
+		return ts_guc_enable_transparent_decompression == 2;
+
+	return ts_guc_enable_transparent_decompression > 0;
 }
 
 /* this function fills in a jsonb with the non-null fields of

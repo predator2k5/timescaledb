@@ -1411,16 +1411,16 @@ timescaledb_get_relation_info_hook(PlannerInfo *root, Oid relation_objectid, boo
 			 * based on the Chunk struct cached by our hypertable expansion, but
 			 * in cases when these functions don't run, we have to do it here.
 			 */
+			const Chunk *chunk = ts_planner_chunk_fetch(root, rel);
 			const bool use_transparent_decompression =
-				ts_guc_enable_transparent_decompression && TS_HYPERTABLE_HAS_COMPRESSION_TABLE(ht);
+				ts_should_use_transparent_decompression(ht, chunk->amoid);
 			const bool is_standalone_chunk = (type == TS_REL_CHUNK_STANDALONE) &&
 											 !TS_HYPERTABLE_IS_INTERNAL_COMPRESSION_TABLE(ht);
 			const bool is_child_chunk_in_update =
 				(type == TS_REL_CHUNK_CHILD) && IS_UPDL_CMD(query);
+
 			if (use_transparent_decompression && (is_standalone_chunk || is_child_chunk_in_update))
 			{
-				const Chunk *chunk = ts_planner_chunk_fetch(root, rel);
-
 				if (!ts_chunk_is_partial(chunk) && ts_chunk_is_compressed(chunk))
 				{
 					rel->indexlist = NIL;
