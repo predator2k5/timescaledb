@@ -1,7 +1,8 @@
 # This section has to be equivalent to test/postgresql.conf
 
 autovacuum=false
-datestyle='Postgres, MDY'
+timezone='PST8PDT'
+datestyle='ISO, YMD'
 hba_file='@TEST_PG_HBA_FILE@'
 log_destination='@TEST_PG_LOG_DESTINATION@'
 log_directory='@TEST_PG_LOG_DIRECTORY@'
